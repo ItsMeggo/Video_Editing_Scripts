@@ -1,0 +1,48 @@
+import os
+
+def create_folder_structure(base_path, episode_number):
+    """Creates the folder structure for a 12POA episode."""
+    folders = [
+        "Assets/Characters",
+        "Assets/Backgrounds",
+        "Assets/Thumbnails",
+        "Assets/Sound Effects",
+        "Assets/Music",
+        "Scripts/Storyboard",
+        "Scripts/Dialogue",
+        "Scripts/Scene Breakdown",
+        "Flipnotes/Raw Flipnotes",
+        "Flipnotes/Exports",
+        "Flipnotes/Thumbnails",
+        "Flipnotes/Thumbnails/Base",
+        "Flipnotes/Thumbnails/Resized",
+        "Scenes",
+        "Renders/Practice Renders",
+        "Renders/Full Renders",
+        "Editing"
+    ]
+
+    base_episode_path = os.path.join(base_path, f"12POA_Ep{episode_number}")
+
+    for folder in folders:
+        folder_path = os.path.join(base_episode_path, folder)
+        os.makedirs(folder_path, exist_ok=True)
+
+ # Create specific scene folders
+    scene_names = ["Title", "Introduction", "Flipnote Compilation", "Quiz", "Credits"]
+    for scene_name in scene_names:
+        scene_folder = os.path.join(base_episode_path, f"Scenes/{scene_name}")
+        os.makedirs(scene_folder, exist_ok=True)
+        os.makedirs(os.path.join(scene_folder, "Flipnote Files"), exist_ok=True)
+        os.makedirs(os.path.join(scene_folder, "Practice Renders"), exist_ok=True)
+        os.makedirs(os.path.join(scene_folder, "Final Renders"), exist_ok=True)
+        os.makedirs(os.path.join(scene_folder, "AE Files"), exist_ok=True)
+    print(f"Folder structure for Episode {episode_number} created at {base_episode_path}")
+
+if __name__ == "__main__":
+    # Set your base path where you want the folders created
+    base_path = input("Enter the base path for 12POA project: ").strip()
+    episode_number = input("Enter the episode number: ").strip()
+
+    create_folder_structure(base_path, episode_number)
+    print("Folder structure setup is complete!")
