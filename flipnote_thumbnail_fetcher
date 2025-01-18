@@ -1,0 +1,120 @@
+import re
+from urllib.parse import urlparse, parse_qs
+import requests
+import os
+from pathlib import Path
+import time
+
+def parse_flipnote_input(text):
+    """
+    Parse the input text format and extract title and URL pairs.
+    Returns a list of tuples containing (title, url).
+    """
+    # Split the text into blocks for each flipnote
+    entries = []
+    current_title = ""
+    current_url = ""
+    
+    lines = text.strip().split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('Title:'):
+            current_title = line[6:].strip()
+        elif line.startswith('Short URL:'):
+            current_url = line[10:].strip()
+            if current_title and current_url:
+                entries.append((current_title, current_url))
+    
+    return entries
+
+def get_video_url(short_url):
+    """
+    Follow the short URL redirect to get the actual video URL.
+    """
+    try:
+        response = requests.head(short_url, allow_redirects=True)
+        return response.url
+    except Exception as e:
+        print(f"Error resolving short URL {short_url}: {e}")
+        return None
+
+def sanitize_filename(title):
+    """
+    Convert title to a safe filename.
+    """
+    # Replace invalid filename characters with underscores
+    invalid_chars = '<>:"/\\|?*'
+    for char in invalid_chars:
+        title = title.replace(char, '_')
+    return title.strip()
+
+def download_thumbnail(video_url, title, output_dir="thumbnails"):
+    """
+    Download a thumbnail from the given video URL and save it with the given title.
+    """
+    try:
+        # Create output directory if it doesn't exist
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Extract the thumbnail URL
+        parsed = urlparse(video_url)
+        path = parsed.path
+        video_id = path.split('/')[-1].split('?')[0]
+        base_url = f"{parsed.scheme}://{parsed.netloc}/theatre_assets/images/dynamic/thumbnail"
+        thumbnail_url = f"{base_url}/{video_id}"
+        
+        # Make the request
+        response = requests.get(thumbnail_url)
+        response.raise_for_status()
+        
+        # Save the image with the title as filename
+        safe_title = sanitize_filename(title)
+        output_path = os.path.join(output_dir, f"{safe_title}.png")
+        with open(output_path, 'wb') as f:
+            f.write(response.content)
+        return True, output_path
+    except Exception as e:
+        return False, str(e)
+
+def process_flipnotes(input_text, output_dir="thumbnails"):
+    """
+    Process the flipnote input text and download thumbnails.
+    """
+    entries = parse_flipnote_input(input_text)
+    successful = 0
+    failed = 0
+    
+    for title, short_url in entries:
+        print(f"\nProcessing: {title}")
+        # Get the actual video URL from the short URL
+        video_url = get_video_url(short_url)
+        if video_url:
+            # Add a small delay to avoid overwhelming the server
+            time.sleep(1)
+            success, result = download_thumbnail(video_url, title, output_dir)
+            
+            if success:
+                print(f"✓ Successfully downloaded: {result}")
+                successful += 1
+            else:
+                print(f"✗ Failed to download thumbnail for '{title}': {result}")
+                failed += 1
+        else:
+            print(f"✗ Failed to resolve short URL for '{title}'")
+            failed += 1
+    
+    print(f"\nDownload complete!")
+    print(f"Successfully downloaded: {successful} thumbnails")
+    if failed > 0:
+        print(f"Failed downloads: {failed}")
+    print(f"Thumbnails saved in: {output_dir}/")
+
+# Example usage:
+if __name__ == "__main__":
+    # Example input text
+    input_text = """Title: POWER
+Short URL: https://flipnot.es/VMABQC
+Creator: Soura.F"""
+    
+    # You can paste your input text here
+    process_flipnotes(input_text)
